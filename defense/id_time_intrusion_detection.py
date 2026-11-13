@@ -1,6 +1,5 @@
 import json
 import sys
-import time
 from time import monotonic as time_monotonic
 
 from collections import deque

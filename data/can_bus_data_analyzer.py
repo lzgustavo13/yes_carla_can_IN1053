@@ -33,7 +33,6 @@ def main():
         # Make the mean and std of the timestamp_diff column
         mean_diff = can_id_df['timestamp_diff'].mean()
         std_diff = can_id_df['timestamp_diff'].std()
-        #print(f"CAN ID: {can_id}, Mean Timestamp Diff: {mean_diff}, Std Dev: {std_diff}")
 
         msg_type = "periodic" if std_diff < 0.01 else "sporadic"
 
