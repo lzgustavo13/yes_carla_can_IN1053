@@ -1,0 +1,18 @@
+{
+  "monitor": {
+    "analyzed": 471,
+    "allowed": 471,
+    "blocked": 0,
+    "alerts": 471,
+    "forwarded": 471,
+    "send_errors": 0
+  },
+  "protect": {
+    "analyzed": 470,
+    "allowed": 0,
+    "blocked": 470,
+    "alerts": 470,
+    "forwarded": 0,
+    "send_errors": 0
+  }
+}

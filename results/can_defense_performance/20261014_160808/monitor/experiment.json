@@ -1,0 +1,26 @@
+{
+  "scenario": "monitor",
+  "started_utc": "2026-10-14T19:16:01.455095+00:00",
+  "attack_command": [
+    "/home/luizgustavo/miniconda3/envs/n4s_env/bin/python",
+    "/home/luizgustavo/yes-carla-can/cyberattacks_module.py",
+    "--feature",
+    "hand_brake",
+    "--period",
+    "0.02",
+    "--vcan",
+    "vcan1"
+  ],
+  "attack_seconds": 10,
+  "gateway_command": [
+    "/home/luizgustavo/miniconda3/envs/n4s_env/bin/python",
+    "-u",
+    "/home/luizgustavo/yes-carla-can/security_gateway_module.py",
+    "--mode",
+    "MONITOR",
+    "--log",
+    "/home/luizgustavo/yes-carla-can/results/can_defense_performance/20261014_160808/monitor/decisions.csv"
+  ],
+  "vehicle_effect": "PENDING_MANUAL_OBSERVATION",
+  "completed": true
+}

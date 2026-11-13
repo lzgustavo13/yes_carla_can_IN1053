@@ -1,0 +1,34 @@
+{
+  "normal": {
+    "analyzed": 2335,
+    "allowed": 2335,
+    "blocked": 0,
+    "alerts": 0,
+    "forwarded": 0,
+    "send_errors": 0
+  },
+  "unprotected": {
+    "analyzed": 2761,
+    "allowed": 2761,
+    "blocked": 0,
+    "alerts": 0,
+    "forwarded": 0,
+    "send_errors": 0
+  },
+  "monitor": {
+    "analyzed": 2798,
+    "allowed": 2798,
+    "blocked": 0,
+    "alerts": 471,
+    "forwarded": 2798,
+    "send_errors": 0
+  },
+  "protect": {
+    "analyzed": 2774,
+    "allowed": 2304,
+    "blocked": 470,
+    "alerts": 470,
+    "forwarded": 2304,
+    "send_errors": 0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "normal",
+  "started_utc": "2026-10-14T19:08:08.511696+00:00",
+  "attack_command": null,
+  "attack_seconds": 10,
+  "gateway_command": [
+    "/home/luizgustavo/miniconda3/envs/n4s_env/bin/python",
+    "-u",
+    "/home/luizgustavo/yes-carla-can/security_gateway_module.py",
+    "--mode",
+    "MONITOR",
+    "--log",
+    "/home/luizgustavo/yes-carla-can/results/can_defense_performance/20261014_160808/normal/decisions.csv",
+    "--passive"
+  ],
+  "vehicle_effect": "PENDING_MANUAL_OBSERVATION",
+  "completed": true
+}

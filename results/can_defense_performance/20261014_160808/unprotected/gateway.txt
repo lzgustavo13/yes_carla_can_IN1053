@@ -1,0 +1,17 @@
+READY mode=MONITOR passive=True log=/home/luizgustavo/yes-carla-can/results/can_defense_performance/20261014_160808/unprotected/decisions.csv
+{"alerts": 0, "allowed": 146, "analyzed": 146, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 299, "analyzed": 299, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 451, "analyzed": 451, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 629, "analyzed": 629, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 822, "analyzed": 822, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1023, "analyzed": 1023, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1217, "analyzed": 1217, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1412, "analyzed": 1412, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1601, "analyzed": 1601, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1798, "analyzed": 1798, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 1983, "analyzed": 1983, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 2157, "analyzed": 2157, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 2344, "analyzed": 2344, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 2488, "analyzed": 2488, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 2637, "analyzed": 2637, "blocked": 0, "forwarded": 0, "send_errors": 0}
+{"alerts": 0, "allowed": 2761, "analyzed": 2761, "blocked": 0, "forwarded": 0, "send_errors": 0}
