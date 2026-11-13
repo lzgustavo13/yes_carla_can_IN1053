@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 usage() {
     cat <<EOF
 Usage: $0 [-h|--help]
@@ -10,7 +13,7 @@ What this script does:
   1. Stops the vehicle controls module
   2. Stops the CARLA client module (waits up to 10 seconds for a clean exit)
   3. Stops the CARLA simulator
-  4. Removes the vxcan bridge (can-gw routes, vcan1)
+  4. Removes the can-gw routes and vcan1
   5. Removes the virtual CAN bus (vcan0) and unloads the vcan/can-gw kernel modules
 
 Options:
@@ -26,6 +29,14 @@ for arg in "$@"; do
 done
 
 VCAN_INTERFACE="${VCAN_INTERFACE:-vcan0}"
+
+if [[ -e results/can_gateway_state.json ]]; then
+    echo "Stop attacks and the gateway, then run security_gateway_module.py --restore before removing interfaces." >&2
+    exit 1
+fi
+for tool in pgrep sudo ip modprobe cangw; do
+    command -v "$tool" >/dev/null || { echo "Missing command: $tool." >&2; exit 1; }
+done
 
 # Stop vehicle controls module
 echo "Stopping vehicle controls module..."
@@ -44,7 +55,8 @@ CARLA_CLIENT_PID=$(pgrep -d ' ' -f "CARLA_client_module.py")
 if [ -n "$CARLA_CLIENT_PID" ]; then
     kill $CARLA_CLIENT_PID
     echo "Waiting for CARLA_client_module (PID $CARLA_CLIENT_PID) to exit..."
-    TIMEOUT=10
+    # Fifty waits of 0.2 seconds give the advertised ten-second grace period.
+    TIMEOUT=50
     ELAPSED=0
     while kill -0 $CARLA_CLIENT_PID 2>/dev/null; do
         if [ $ELAPSED -ge $TIMEOUT ]; then

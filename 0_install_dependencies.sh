@@ -1,4 +1,8 @@
 #!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 usage() {
     cat <<EOF
@@ -20,6 +24,7 @@ Environment variables:
   CARLA_FOLDER_NAME            Directory to install CARLA into (default: carla-0-9-15)
   DOWNLOAD_FROM_CARLA_GITHUB   Set to "true" to download CARLA from the original CARLA
                                 URL instead of our Google Drive mirror (default: false)
+  CONDA_ENV_NAME              Conda environment name (default: n4s_env)
 EOF
 }
 
@@ -33,7 +38,7 @@ done
 CARLA_FOLDER_NAME="${CARLA_FOLDER_NAME:-carla-0-9-15}"
 DOWNLOAD_FROM_CARLA_GITHUB="${DOWNLOAD_FROM_CARLA_GITHUB:-false}"
 CARLA_GDRIVE_FILE_ID="1mVSuwmbBpHo3igwZt3a11duBAconZjo4"
-CONDA_ENV_NAME="n4s_env"
+CONDA_ENV_NAME="${CONDA_ENV_NAME:-n4s_env}"
 PYTHON_VERSION="3.9"
 
 echo "Installing \"Yes, CARLA CAN\" project dependencies..."
@@ -44,6 +49,9 @@ echo "Installing \"Yes, CARLA CAN\" project dependencies..."
 echo "Installing system packages..."
 sudo apt-get install -y \
     can-utils \
+    iproute2 \
+    kmod \
+    procps \
     curl \
     wget \
     libvulkan1 \
@@ -58,11 +66,13 @@ else
     read -r -p "conda was not found. Install Miniconda now? [y/N] " response
     if [[ "${response,,}" == "y" ]]; then
         echo "Downloading Miniconda installer..."
-        curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        INSTALL_DIR="$(mktemp -d)"
+        trap 'rm -rf "$INSTALL_DIR"' EXIT
+        curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+            -o "$INSTALL_DIR/miniconda.sh"
 
         echo "Running Miniconda installer..."
-        bash Miniconda3-latest-Linux-x86_64.sh -b -p "$HOME/miniconda3"
-        rm Miniconda3-latest-Linux-x86_64.sh
+        bash "$INSTALL_DIR/miniconda.sh" -b -p "$HOME/miniconda3"
 
         # Initialise conda for the current shell session
         eval "$("$HOME/miniconda3/bin/conda" shell.bash hook)"
@@ -83,12 +93,13 @@ if ! command -v conda &>/dev/null; then
     source "$HOME/miniconda3/etc/profile.d/conda.sh" || { echo "Failed to load conda. Please activate it manually and re-run."; exit 1; }
 fi
 
-echo "Accepting Anaconda Terms of Service for default channels..."
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-echo "Anaconda Terms of Service accepted."
+if conda tos --help >/dev/null 2>&1; then
+    echo "Accepting Anaconda Terms of Service for default channels..."
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+fi
 
-if conda env list | grep -q "^${CONDA_ENV_NAME}"; then
+if conda env list | awk '{print $1}' | grep -Fx "$CONDA_ENV_NAME" >/dev/null; then
     echo "Conda environment '${CONDA_ENV_NAME}' already exists. Skipping creation."
 else
     echo "Creating conda environment '${CONDA_ENV_NAME}' with Python ${PYTHON_VERSION}..."
@@ -96,7 +107,7 @@ else
 fi
 
 echo "Installing Python dependencies into '${CONDA_ENV_NAME}'..."
-conda run -n "${CONDA_ENV_NAME}" pip install -r requirements.txt
+conda run --no-capture-output -n "$CONDA_ENV_NAME" python -m pip install -r requirements.txt
 
 echo "Python environment ready. Activate it with:"
 echo "    conda activate ${CONDA_ENV_NAME}"
@@ -104,14 +115,22 @@ echo "    conda activate ${CONDA_ENV_NAME}"
 # ------------------------------------------------------------------
 # 4. CARLA
 # ------------------------------------------------------------------
-mkdir -p ${CARLA_FOLDER_NAME}
-cd ${CARLA_FOLDER_NAME}
+mkdir -p "$CARLA_FOLDER_NAME"
+cd "$CARLA_FOLDER_NAME"
+
+if [[ -x CarlaUE4.sh ]]; then
+    echo "CARLA is already installed in $CARLA_FOLDER_NAME. Keeping existing resources."
+    exit 0
+fi
 
 echo "Downloading CARLA..."
-if [[ "${DOWNLOAD_FROM_CARLA_GITHUB,,}" == "true" ]]; then
-    wget https://tiny.carla.org/carla-0-9-15-linux
-else
-    conda run --live-stream -n "${CONDA_ENV_NAME}" gdown "https://drive.google.com/uc?id=${CARLA_GDRIVE_FILE_ID}" -O carla-0-9-15-linux
+if [[ ! -s carla-0-9-15-linux ]]; then
+    if [[ "${DOWNLOAD_FROM_CARLA_GITHUB,,}" == "true" ]]; then
+        wget https://tiny.carla.org/carla-0-9-15-linux -O carla-0-9-15-linux
+    else
+        conda run --no-capture-output -n "$CONDA_ENV_NAME" gdown \
+            "https://drive.google.com/uc?id=${CARLA_GDRIVE_FILE_ID}" -O carla-0-9-15-linux
+    fi
 fi
 
 echo "Extracting CARLA..."
