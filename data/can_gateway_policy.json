@@ -1,0 +1,10 @@
+{
+  "window_seconds": 1.0,
+  "rate_multiplier": 1.5,
+  "burst_allowance": 1,
+  "period_overrides_ms": {},
+  "segments": {
+    "vcan1": {"allow": "dbc", "deny": ["HAND_BRAKE"], "check_frequency": true},
+    "vcan0": {"allow": "dbc", "deny": [], "check_frequency": false}
+  }
+}
