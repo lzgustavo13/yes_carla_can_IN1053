@@ -3,9 +3,7 @@ import carla
 
 from can_network.dbc import load_and_validate, REQUIRED_SIGNALS, LIGHT_SIGNALS, SENSOR_MESSAGES
 
-VCAN_CHANNEL = "vcan0"
-VCAN_ATTACKER_CHANNEL = "vcan1"
-CAN_INTERFACE = "socketcan"
+from .constants import VCAN_CHANNEL, VCAN_ATTACKER_CHANNEL, CAN_INTERFACE
 
 
 class CAN_Network(object):
