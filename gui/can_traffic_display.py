@@ -29,6 +29,7 @@ class CANTrafficDisplay:
         self._lock = threading.Lock()
         self._active = False
         self._font = None
+        self._font_size = None
         self._bus = None
 
         try:
@@ -65,16 +66,18 @@ class CANTrafficDisplay:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _init_font(self):
-        if self._font is not None:
+    def _init_font(self, panel_width):
+        font_size = min(18, max(10, panel_width // 28))
+        if self._font is not None and self._font_size == font_size:
             return
+        self._font_size = font_size
         fonts = [x for x in pygame.font.get_fonts() if "mono" in x]
         preferred = "ubuntumono"
         name = preferred if preferred in fonts else (fonts[0] if fonts else None)
         if name:
-            self._font = pygame.font.Font(pygame.font.match_font(name), 18)
+            self._font = pygame.font.Font(pygame.font.match_font(name), font_size)
         else:
-            self._font = pygame.font.Font(pygame.font.get_default_font(), 17)
+            self._font = pygame.font.Font(pygame.font.get_default_font(), font_size)
 
     # ------------------------------------------------------------------
     # Public API
@@ -88,12 +91,13 @@ class CANTrafficDisplay:
             self._thread.join(timeout=2.0)
 
     def render(self, display: pygame.Surface):
-        self._init_font()
         screen_w, screen_h = display.get_size()
-        panel_x = screen_w - self.PANEL_WIDTH
+        panel_width = min(self.PANEL_WIDTH, screen_w - screen_w // 2)
+        panel_x = screen_w - panel_width
+        self._init_font(panel_width)
 
         # Semi-transparent background
-        bg = pygame.Surface((self.PANEL_WIDTH, screen_h), pygame.SRCALPHA)
+        bg = pygame.Surface((panel_width, screen_h), pygame.SRCALPHA)
         bg.fill((*self.COLOR_BG, 140))
         display.blit(bg, (panel_x, 0))
 
@@ -124,6 +128,10 @@ class CANTrafficDisplay:
         for line in reversed(snapshot):
             if y + self.LINE_HEIGHT > screen_h:
                 break
+            # Clip long payloads within the CAN panel instead of covering the HUD.
             surf = self._font.render(line, True, self.COLOR_TEXT)
+            visible_width = panel_width - 2 * self.PADDING
+            if surf.get_width() > visible_width:
+                surf = surf.subsurface((0, 0, visible_width, surf.get_height()))
             display.blit(surf, (panel_x + self.PADDING, y))
             y += self.LINE_HEIGHT

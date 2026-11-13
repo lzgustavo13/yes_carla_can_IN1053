@@ -11,7 +11,7 @@ except ImportError:
 
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud, gamma_correction):
+    def __init__(self, parent_actor, hud, gamma_correction, camera_fps=30):
         self.sensor = None
         self.surface = None
         self._parent = parent_actor
@@ -64,6 +64,9 @@ class CameraManager(object):
             if item[0].startswith('sensor.camera'):
                 bp.set_attribute('image_size_x', str(hud.dim[0]))
                 bp.set_attribute('image_size_y', str(hud.dim[1]))
+                bp.set_attribute('sensor_tick', str(1.0 / camera_fps))
+                if bp.has_attribute('enable_postprocess_effects'):
+                    bp.set_attribute('enable_postprocess_effects', 'false')
                 if bp.has_attribute('gamma'):
                     bp.set_attribute('gamma', str(gamma_correction))
                 for attr_name, attr_value in item[3].items():
@@ -119,6 +122,9 @@ class CameraManager(object):
     def _parse_image(weak_self, image):
         self = weak_self()
         if not self:
+            return
+        # GPU sensors produce empty data when --no-rendering is enabled.
+        if not image.raw_data:
             return
         if self.sensors[self.index][0].startswith('sensor.lidar'):
             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))

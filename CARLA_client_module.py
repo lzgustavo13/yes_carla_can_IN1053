@@ -6,8 +6,6 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-from __future__ import print_function
-
 import argparse
 import glob
 import logging
@@ -29,8 +27,6 @@ try:
 except IndexError:
     pass
 
-import tkinter as tk
-
 import carla
 import pygame
 
@@ -42,14 +38,9 @@ def game_loop(args):
     pygame.init()
     pygame.font.init()
 
-    root = tk.Tk()
-    width = root.winfo_screenwidth()
-    height = root.winfo_screenheight()
-    root.destroy()
-    print(f"width: {width}, height: {height}")
-
     world = None
     original_settings = None
+    traffic_manager = None
     can_bus = CAN_Network(channel=args.vcan)
     can_display = CANTrafficDisplay(channel=args.vcan)
 
@@ -57,22 +48,28 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(2000.0)
 
-        # Disable rendering and set fixed time step
         sim_world = client.get_world()
-        world_settings = sim_world.get_settings()
-        world_settings.no_rendering_mode = True  # Disable rendering
-        # fps = 30
-        # world_settings.fixed_delta_seconds = round(1/fps, 2) # Set FPS
-        sim_world.apply_settings(world_settings)
+        if args.map:
+            current_map = sim_world.get_map().name.rsplit("/", 1)[-1]
+            if current_map != args.map.rsplit("/", 1)[-1]:
+                layers = carla.MapLayer.NONE if args.minimal_map else carla.MapLayer.All
+                sim_world = client.load_world(args.map, map_layers=layers)
+        if args.minimal_map:
+            if not sim_world.get_map().name.endswith("_Opt"):
+                raise ValueError("--minimal-map requires a layered map, e.g. --map Town02_Opt")
+            sim_world.unload_map_layer(carla.MapLayer.All)
+
+        # Save settings before changing them, including in asynchronous mode.
+        original_settings = sim_world.get_settings()
+        settings = sim_world.get_settings()
+        settings.no_rendering_mode = args.no_rendering
 
         if args.sync:
-            original_settings = sim_world.get_settings()
-            settings = sim_world.get_settings()
             if not settings.synchronous_mode:
                 settings.synchronous_mode = True
                 settings.fixed_delta_seconds = 0.05
-            sim_world.apply_settings(settings)
-
+        sim_world.apply_settings(settings)
+        if args.sync:
             traffic_manager = client.get_trafficmanager()
             traffic_manager.set_synchronous_mode(True)
 
@@ -83,12 +80,12 @@ def game_loop(args):
             )
 
         display = pygame.display.set_mode(
-            (width / 2, height / 2), pygame.HWSURFACE | pygame.DOUBLEBUF
+            (args.width, args.height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
         display.fill((0, 0, 0))
         pygame.display.flip()
 
-        hud = HUD(width / 2, height / 2)
+        hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args, can_bus)
         controller = KeyboardControl(world, args.autopilot)
 
@@ -101,10 +98,11 @@ def game_loop(args):
         while True:
             if args.sync:
                 sim_world.tick()
-            clock.tick_busy_loop(60)
+            clock.tick(args.fps)
             if controller.parse_events(client, world, clock, args.sync, can_bus):
                 return
             world.tick(clock)
+            display.fill((0, 0, 0))
             world.render(display)
             can_display.render(display)
             pygame.display.flip()
@@ -124,6 +122,8 @@ def game_loop(args):
 
         try:
             if original_settings:
+                if traffic_manager is not None and not original_settings.synchronous_mode:
+                    traffic_manager.set_synchronous_mode(False)
                 sim_world.apply_settings(original_settings)
         except Exception:
             pass
@@ -166,8 +166,8 @@ def main():
     argparser.add_argument(
         "--res",
         metavar="WIDTHxHEIGHT",
-        default="1280x720",
-        help="window resolution (default: 1280x720)",
+        default="960x540",
+        help="window and camera resolution (default: 960x540)",
     )
     argparser.add_argument(
         "--filter",
@@ -196,6 +196,15 @@ def main():
     argparser.add_argument(
         "--sync", action="store_true", help="Activate synchronous mode execution"
     )
+    argparser.add_argument("--fps", type=int, default=60,
+                           help="maximum client refresh rate (default: 60)")
+    argparser.add_argument("--camera-fps", type=int, default=30,
+                           help="maximum camera capture rate in simulation time (default: 30)")
+    argparser.add_argument("--map", help="load a map before spawning, e.g. Town02_Opt")
+    argparser.add_argument("--minimal-map", action="store_true",
+                           help="remove optional layers from an _Opt map (keeps roads and traffic signals)")
+    argparser.add_argument("--no-rendering", action="store_true",
+                           help="disable graphics for CAN-only experiments; camera images will be unavailable")
     argparser.add_argument(
         "--vcan",
         default=VCAN_CHANNEL,
@@ -203,7 +212,12 @@ def main():
     )
     args = argparser.parse_args()
 
-    args.width, args.height = [int(x) for x in args.res.split("x")]
+    try:
+        args.width, args.height = [int(x) for x in args.res.split("x")]
+        if min(args.width, args.height, args.fps, args.camera_fps) <= 0:
+            raise ValueError
+    except ValueError:
+        argparser.error("--res must be WIDTHxHEIGHT with positive dimensions; FPS values must be positive")
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)

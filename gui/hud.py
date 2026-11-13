@@ -56,13 +56,15 @@ from gui.text import *
 class HUD(object):
     def __init__(self, width, height):
         self.dim = (width, height)
+        self.panel_width = width // 2
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         font_name = 'courier' if os.name == 'nt' else 'mono'
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
         default_font = 'ubuntumono'
-        mono = default_font if default_font in fonts else fonts[0]
-        mono = pygame.font.match_font(mono)
-        self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 24)
+        mono = default_font if default_font in fonts else (fonts[0] if fonts else None)
+        mono = pygame.font.match_font(mono) if mono else None
+        font_size = min(24, max(12, height // 30), max(12, width // 56))
+        self._font_mono = pygame.font.Font(mono, font_size)
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
         self.help = HelpText(pygame.font.Font(mono, 16), width, height)
         self.server_fps = 0
@@ -70,6 +72,7 @@ class HUD(object):
         self.simulation_time = 0
         self._show_info = True
         self._info_text = []
+        self._info_elapsed_ms = 100
         self._server_clock = pygame.time.Clock()
 
         self._show_ackermann_info = False
@@ -85,6 +88,11 @@ class HUD(object):
         self._notifications.tick(world, clock)
         if not self._show_info:
             return
+        # Vehicle queries and actor enumeration need not run at display FPS.
+        self._info_elapsed_ms += clock.get_time()
+        if self._info_elapsed_ms < 100:
+            return
+        self._info_elapsed_ms = 0
         t = world.player.get_transform()
         v = world.player.get_velocity()
         c = world.player.get_control()
@@ -101,19 +109,11 @@ class HUD(object):
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
             'Client:  % 16.0f FPS' % clock.get_fps(),
-            '',
             'Vehicle: % 20s' % get_actor_display_name(world.player, truncate=20),
             'Map:     % 20s' % world.map.name.split('/')[-1],
             'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
-            '',
             'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)),
-            u'Compass:% 17.0f\N{DEGREE SIGN} % 2s' % (compass, heading),
-            'Accelero: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.accelerometer),
-            'Gyroscop: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.gyroscope),
-            'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (t.location.x, t.location.y)),
-            'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
-            'Height:  % 18.0f m' % t.location.z,
-            '']
+        ]
         if isinstance(c, carla.VehicleControl):
             self._info_text += [
                 ('Throttle:', c.throttle, 0.0, 1.0),
@@ -135,9 +135,14 @@ class HUD(object):
                 ('Jump:', c.jump)]
         self._info_text += [
             '',
+            u'Compass:% 17.0f\N{DEGREE SIGN} % 2s' % (compass, heading),
+            'Accelero: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.accelerometer),
+            'Gyroscop: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.gyroscope),
+            'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (t.location.x, t.location.y)),
+            'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
+            'Height:  % 18.0f m' % t.location.z,
             'Collision:',
             collision,
-            '',
             'Number of vehicles: % 8d' % len(vehicles)]
         if len(vehicles) > 1:
             self._info_text += ['Nearby vehicles:']
@@ -169,7 +174,7 @@ class HUD(object):
             line_height = self._font_mono.get_linesize()
             bar_h_offset = 8 + self._font_mono.size('Hand brake:')[0] + 4
             bar_width = bar_h_offset - 8
-            info_surface = pygame.Surface((bar_h_offset + bar_width + 16, self.dim[1]))
+            info_surface = pygame.Surface((self.panel_width, self.dim[1]))
             info_surface.set_alpha(100)
             display.blit(info_surface, (0, 0))
             v_offset = 4
@@ -178,7 +183,8 @@ class HUD(object):
                     break
                 if isinstance(item, list):
                     if len(item) > 1:
-                        points = [(x + 8, v_offset + 8 + (1.0 - y) * 30) for x, y in enumerate(item)]
+                        graph_height = 2 * line_height - 4
+                        points = [(x + 8, v_offset + 2 + (1.0 - y) * graph_height) for x, y in enumerate(item)]
                         pygame.draw.lines(display, (255, 136, 0), False, points, 2)
                     item = None
                     v_offset += line_height

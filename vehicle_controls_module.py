@@ -370,7 +370,7 @@ def keyboard_parser_loop(dbc_path="data/carla.dbc", vcan_channel=None):
     running = True
 
     while running:
-        clock.tick_busy_loop(60)
+        clock.tick(60)
         if controller.parse_events(clock, can_net):
             running = False
             break
